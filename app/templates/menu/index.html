@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Меню - Кафе{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Меню</h1>
+        {% if current_user.role.RoleName == 'Адміністратор' %}
+        <div>
+            <a href="{{ url_for('menu.new_dish') }}" class="btn btn-success">
+                <i class="bi bi-plus-lg"></i> Нова страва
+            </a>
+            <a href="{{ url_for('menu.new_category') }}" class="btn btn-primary">
+                <i class="bi bi-folder-plus"></i> Нова категорія
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <!-- Категорії -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Категорії</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('menu.index') }}" 
+                       class="list-group-item list-group-item-action {% if not selected_category %}active{% endif %}">
+                        Всі страви
+                    </a>
+                    {% for category in categories %}
+                    <a href="{{ url_for('menu.index', category_id=category.CategoryID) }}" 
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center
+                       {% if selected_category and selected_category.CategoryID == category.CategoryID %}active{% endif %}">
+                        {{ category.CategoryName }}
+                        {% if current_user.role.RoleName == 'Адміністратор' %}
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('menu.edit_category', category_id=category.CategoryID) }}" 
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Страви -->
+        <div class="col-md-9">
+            {% if not dishes_by_category %}
+            <div class="alert alert-info">
+                Немає доступних страв у вибраній категорії
+            </div>
+            {% else %}
+            {% for category, dishes in dishes_by_category.items() %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">{{ category.CategoryName }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row row-cols-1 row-cols-md-3 g-4">
+                        {% for dish in dishes %}
+                        <div class="col">
+                            <div class="card h-100">
+                                {% if dish.ImageURL %}
+                                <img src="{{ dish.ImageURL }}" class="card-img-top" alt="{{ dish.DishName }}">
+                                {% endif %}
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ dish.DishName }}</h5>
+                                    <p class="card-text text-muted">{{ dish.Description }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-primary">{{ "%.2f"|format(dish.Price) }} ₴</span>
+                                        <div class="btn-group">
+                                            {% if current_user.role.RoleName == 'Адміністратор' %}
+                                            <a href="{{ url_for('menu.edit_dish', dish_id=dish.DishID) }}" 
+                                               class="btn btn-outline-secondary btn-sm">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="{{ url_for('menu.edit_recipe', dish_id=dish.DishID) }}" 
+                                               class="btn btn-outline-info btn-sm">
+                                                <i class="bi bi-journal-text"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#deleteDishModal"
+                                                    data-dish-id="{{ dish.DishID }}"
+                                                    data-dish-name="{{ dish.DishName }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            {% endif %}
+                                            {% if not dish.IsAvailable or not can_cook_dish(dish.DishID) %}
+                                            <button type="button" class="btn btn-secondary btn-sm" disabled>
+                                                Недоступно
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% if current_user.role.RoleName != 'Адміністратор' %}
+                                    <div class="mt-2">
+                                        <strong>Інгредієнти:</strong>
+                                        <ul class="mb-0 small">
+                                            {% for ingredient in dish.ingredients %}
+                                            <li>
+                                                {{ ingredient.product.ProductName }} — {{ '%.0f'|format(ingredient.Quantity) }} {{ ingredient.product.measurement_unit.UnitName }}
+                                            </li>
+                                            {% else %}
+                                            <li class="text-muted">(немає інгредієнтів)</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Dish Modal -->
+<div class="modal fade" id="deleteDishModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Видалення страви</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ви впевнені, що хочете видалити страву "<span id="deleteDishName"></span>"?</p>
+                <p class="text-danger">Увага: Ця дія незворотна!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteDish">Видалити</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Delete Dish Modal
+    const deleteDishModal = document.getElementById('deleteDishModal');
+    deleteDishModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const dishId = button.getAttribute('data-dish-id');
+        const dishName = button.getAttribute('data-dish-name');
+        
+        this.querySelector('#deleteDishName').textContent = dishName;
+        this.querySelector('#confirmDeleteDish').setAttribute('data-dish-id', dishId);
+    });
+
+    // Delete Dish
+    document.getElementById('confirmDeleteDish').addEventListener('click', function() {
+        const dishId = this.getAttribute('data-dish-id');
+        
+        fetch(`/menu/dishes/${dishId}/delete`, {
+            method: 'POST'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Помилка при видаленні страви');
+        });
+    });
+});
+</script>
+{% endblock %} 

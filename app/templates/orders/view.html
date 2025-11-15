@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+
+{% block title %}Замовлення #{{ order.OrderID }} - Кафе{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Замовлення #{{ order.OrderID }}</h4>
+                    <span class="badge bg-{{ 'success' if order.PaidDateTime else 'primary' }}">
+                        {{ 'Оплачено' if order.PaidDateTime else order.status.StatusName }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h5>Інформація про замовлення</h5>
+                            <p><strong>Дата:</strong> {{ order.OrderDateTime.strftime('%d.%m.%Y %H:%M') }}</p>
+                            {% if order.type.TypeName == 'Доставка' and order.address %}
+                            <p><strong>Тип:</strong> Доставка за адресою {{ order.address.unit.building.street.type.TypeName }} {{ order.address.unit.building.street.StreetName }}, {{ order.address.unit.building.BuildingNumber }}{% if order.address.unit.UnitNumber %}, {{ order.address.unit.UnitNumber }}{% endif %}{% if order.address.Comment %} ({{ order.address.Comment }}){% endif %}</p>
+                            {% else %}
+                            <p><strong>Тип:</strong> {{ order.type.TypeName }}</p>
+                            {% endif %}
+                            {% if order.TableID %}
+                            <p>
+                                <strong>Стіл:</strong> {{ order.table.TableName }} ({{ order.table.hall.Name }})
+                                {% if not order.PaidDateTime %}
+                                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#changeTableModal">
+                                    Змінити стіл
+                                </button>
+                                {% endif %}
+                            </p>
+                            {% endif %}
+                            {% if order.CustomerID %}
+                            <p><strong>Клієнт:</strong> {{ order.customer.person.LastName }} {{ order.customer.person.FirstName }}</p>
+                            {% endif %}
+                            <div class="mb-3">
+                                <label class="form-label">Статус замовлення</label>
+                                <form id="changeStatusForm">
+                                    <select class="form-select" name="status_id" id="orderStatusSelect" {% if order.PaidDateTime %}disabled title="Статус не можна змінити для оплаченого замовлення"{% endif %}>
+                                        {% for status in order.status.__class__.query.all() %}
+                                        <option value="{{ status.OrderStatusID }}" {% if order.OrderStatusID == status.OrderStatusID %}selected{% endif %}>{{ status.StatusName }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </form>
+                                <div id="statusChangeMsg" class="mt-2"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Сума замовлення</h5>
+                            <h3 class="text-primary">{{ "%.2f"|format(order.TotalAmount) }} ₴</h3>
+                            {% if not order.PaidDateTime %}
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#payOrderModal">
+                                Оплатити замовлення
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <h5>Страви в замовленні</h5>
+                    {% if order.dishes %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Страва</th>
+                                    <th>Кількість</th>
+                                    <th>Ціна</th>
+                                    <th>Сума</th>
+                                    <th>Примітка</th>
+                                    <th>Дії</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order_dish in order.dishes %}
+                                <tr>
+                                    <td>{{ order_dish.dish.DishName }}</td>
+                                    <td>{{ order_dish.Quantity }}</td>
+                                    <td>{{ "%.2f"|format(order_dish.PriceAtTime) }} ₴</td>
+                                    <td>{{ "%.2f"|format(order_dish.PriceAtTime * order_dish.Quantity) }} ₴</td>
+                                    <td>{{ order_dish.Notes if order_dish.Notes else '-' }}</td>
+                                    <td>
+                                        {% if not order.PaidDateTime %}
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="removeDish({{ order.OrderID }}, {{ order_dish.OrderDishID }}, event)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Немає страв у замовленні</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Додати страви</h5>
+                </div>
+                <div class="card-body">
+                    {% if not order.PaidDateTime %}
+                    <div class="accordion" id="categoriesAccordion">
+                        {% for category in categories %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" 
+                                        data-bs-toggle="collapse" 
+                                        data-bs-target="#category{{ category.CategoryID }}">
+                                    {{ category.CategoryName }}
+                                </button>
+                            </h2>
+                            <div id="category{{ category.CategoryID }}" class="accordion-collapse collapse" 
+                                 data-bs-parent="#categoriesAccordion">
+                                <div class="accordion-body">
+                                    {% for dish in category.dishes %}
+                                    {% if dish.IsAvailable %}
+                                    <div class="mb-3">
+                                        <h6>{{ dish.DishName }}</h6>
+                                        <p class="text-muted small">{{ dish.Description }}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-primary">{{ "%.2f"|format(dish.Price) }} ₴</span>
+                                            <div class="input-group" style="width: 120px;">
+                                                <button class="btn btn-outline-secondary" type="button" 
+                                                        onclick="decrementQuantity('{{ dish.DishID }}')">-</button>
+                                                <input type="number" class="form-control text-center" 
+                                                       id="quantity{{ dish.DishID }}" value="1" min="1">
+                                                <button class="btn btn-outline-secondary" type="button" 
+                                                        onclick="incrementQuantity('{{ dish.DishID }}')">+</button>
+                                            </div>
+                                            {% if can_cook_dish(dish.DishID) %}
+                                            <button class="btn btn-primary btn-sm" 
+                                                    onclick="addDish({{ order.OrderID }}, '{{ dish.DishID }}')">
+                                                Додати
+                                            </button>
+                                            {% else %}
+                                            <button class="btn btn-secondary btn-sm" disabled>
+                                                Недоступно
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Неможливо додати страви до оплаченого замовлення</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Table Modal -->
+<div class="modal fade" id="changeTableModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Змінити стіл</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="changeTableForm">
+                    <div class="mb-3">
+                        <label class="form-label">Новий стіл</label>
+                        <select class="form-select" name="table_id" required>
+                            <option value="">Виберіть стіл...</option>
+                            {% for hall in halls %}
+                                <optgroup label="{{ hall.Name }}">
+                                    {% for table in hall.tables %}
+                                        {% if table.TableStatusID != 2 or table.TableID == order.TableID %}
+                                        <option value="{{ table.TableID }}" {% if table.TableID == order.TableID %}selected{% endif %}>
+                                            {{ table.TableName }} ({{ table.SeatsCount }} місць)
+                                        </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" onclick="changeTable({{ order.OrderID }})">
+                    Змінити
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pay Order Modal -->
+<div class="modal fade" id="payOrderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Оплата замовлення</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="payOrderForm">
+                    <div class="mb-3">
+                        <label class="form-label">Спосіб оплати</label>
+                        <select class="form-select" name="payment_method_id" required>
+                            <option value="">Виберіть спосіб оплати...</option>
+                            {% for method in payment_methods %}
+                            <option value="{{ method.PaymentMethodID }}">{{ method.MethodName }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+                <hr>
+                <div id="orderReceipt" class="bg-light p-3 rounded" style="max-width: 350px; margin: 0 auto; font-family: monospace;">
+                    <div class="text-center mb-2">
+                        <strong>КАФЕ "{{ halls[0].Name if halls else '...' }}"</strong><br>
+                        <span style="font-size: 12px;">ЧЕК №{{ order.OrderID }}</span>
+                    </div>
+                    <div style="font-size: 12px;">
+                        <div>Дата: {{ order.OrderDateTime.strftime('%d.%m.%Y %H:%M') }}</div>
+                        <div>Офіціант: {% if order.employee and order.employee.person %}{{ order.employee.person.LastName }} {{ order.employee.person.FirstName }}{% else %}-{% endif %}</div>
+                        {% if order.TableID %}<div>Стіл: {{ order.table.TableName }}</div>{% endif %}
+                        {% if order.CustomerID %}<div>Клієнт: {{ order.customer.person.LastName }} {{ order.customer.person.FirstName }}</div>{% endif %}
+                    </div>
+                    <hr style="margin: 6px 0;">
+                    <table style="width:100%; font-size: 12px;">
+                        <thead>
+                            <tr><th style="text-align:left;">Страва</th><th style="text-align:right;">Сума</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for order_dish in order.dishes %}
+                        <tr>
+                            <td>{{ order_dish.dish.DishName }} x{{ order_dish.Quantity }}</td>
+                            <td style="text-align:right;">{{ '%.2f'|format(order_dish.PriceAtTime * order_dish.Quantity) }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    <hr style="margin: 6px 0;">
+                    <div style="font-size: 14px;">
+                        <strong>Всього: {{ '%.2f'|format(order.TotalAmount) }} ₴</strong>
+                    </div>
+                    <div style="font-size: 12px;">ПДВ включено</div>
+                    <div class="text-center mt-2" style="font-size: 12px;">Дякуємо за візит!</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-outline-dark" onclick="printReceipt()">
+                    <i class="bi bi-printer"></i> Друкувати чек
+                </button>
+                <button type="button" class="btn btn-success" onclick="payOrder({{ order.OrderID }})">
+                    Оплатити
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Dish Modal -->
+<div class="modal fade" id="removeDishModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Видалення страви</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="removeDishForm">
+                    <div class="mb-3">
+                        <label class="form-label">Кількість для видалення</label>
+                        <input type="number" class="form-control" id="removeQuantity" name="quantity" min="1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-danger" id="confirmRemoveDish">Видалити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Dish Note Modal -->
+<div class="modal fade" id="addDishNoteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Додати страву з приміткою</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addDishNoteForm">
+                    <input type="hidden" id="addDishOrderId">
+                    <input type="hidden" id="addDishId">
+                    <input type="hidden" id="addDishQuantity">
+                    <div class="mb-3">
+                        <label class="form-label">Примітка до страви</label>
+                        <input type="text" class="form-control" id="addDishNote" name="note" maxlength="250">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="confirmAddDishWithNote">Додати</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function changeTable(orderId) {
+    const form = document.getElementById('changeTableForm');
+    const formData = new FormData(form);
+    
+    fetch(`/orders/${orderId}/change_table`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Помилка при зміні столика');
+    });
+}
+
+function incrementQuantity(dishId) {
+    const input = document.getElementById('quantity' + dishId);
+    input.value = parseInt(input.value) + 1;
+}
+
+function decrementQuantity(dishId) {
+    const input = document.getElementById('quantity' + dishId);
+    if (parseInt(input.value) > 1) {
+        input.value = parseInt(input.value) - 1;
+    }
+}
+
+function addDish(orderId, dishId) {
+    const quantity = document.getElementById('quantity' + dishId).value;
+    // Показати модальне вікно для нотатки
+    document.getElementById('addDishOrderId').value = orderId;
+    document.getElementById('addDishId').value = dishId;
+    document.getElementById('addDishQuantity').value = quantity;
+    document.getElementById('addDishNote').value = '';
+    const modal = new bootstrap.Modal(document.getElementById('addDishNoteModal'));
+    modal.show();
+}
+
+document.getElementById('confirmAddDishWithNote').addEventListener('click', function() {
+    const orderId = document.getElementById('addDishOrderId').value;
+    const dishId = document.getElementById('addDishId').value;
+    const quantity = document.getElementById('addDishQuantity').value;
+    const note = document.getElementById('addDishNote').value;
+    const formData = new URLSearchParams();
+    formData.append('dish_id', dishId);
+    formData.append('quantity', quantity);
+    formData.append('note', note);
+    fetch(`/orders/orders/${orderId}/add_dish`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString()
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Помилка при додаванні страви');
+    });
+    // Закрити модалку
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addDishNoteModal'));
+    modal.hide();
+});
+
+let currentOrderId = null;
+let currentOrderDishId = null;
+
+function removeDish(orderId, orderDishId, event) {
+    currentOrderId = orderId;
+    currentOrderDishId = orderDishId;
+    
+    // Get the current quantity from the table
+    const row = event.target.closest('tr');
+    const quantity = parseInt(row.querySelector('td:nth-child(2)').textContent);
+    
+    // Set max value for the input
+    const removeQuantityInput = document.getElementById('removeQuantity');
+    removeQuantityInput.max = quantity;
+    removeQuantityInput.value = 1;
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('removeDishModal'));
+    modal.show();
+}
+
+document.getElementById('confirmRemoveDish').addEventListener('click', function() {
+    const form = document.getElementById('removeDishForm');
+    const formData = new FormData(form);
+    
+    fetch(`/orders/orders/${currentOrderId}/remove_dish/${currentOrderDishId}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Помилка при видаленні страви');
+    });
+    
+    // Hide the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('removeDishModal'));
+    modal.hide();
+});
+
+function payOrder(orderId) {
+    const form = document.getElementById('payOrderForm');
+    const formData = new FormData(form);
+    
+    fetch(`/orders/orders/${orderId}/pay`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Помилка при оплаті замовлення');
+    });
+}
+
+function printReceipt() {
+    var receipt = document.getElementById('orderReceipt').outerHTML;
+    var win = window.open('', '', 'width=400,height=600');
+    win.document.write('<html><head><title>Чек</title><style>body{font-family:monospace;} table{width:100%;font-size:12px;} th,td{padding:2px;} .text-center{text-align:center;}</style></head><body>' + receipt + '</body></html>');
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const statusSelect = document.getElementById('orderStatusSelect');
+    if (statusSelect) {
+        statusSelect.addEventListener('change', function() {
+            const newStatusId = this.value;
+            fetch(`/orders/orders/{{ order.OrderID }}/change_status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `status_id=${newStatusId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const msgDiv = document.getElementById('statusChangeMsg');
+                if (data.success) {
+                    msgDiv.innerHTML = '<span class="text-success">Статус оновлено</span>';
+                    if (data.deleted) {
+                        msgDiv.innerHTML += '<br><span class="text-warning">Замовлення скасовано і видалено</span>';
+                        setTimeout(() => { window.location.href = '/orders/orders'; }, 1500);
+                    } else {
+                        setTimeout(() => { location.reload(); }, 1000);
+                    }
+                } else {
+                    msgDiv.innerHTML = `<span class="text-danger">${data.error || 'Помилка зміни статусу'}</span>`;
+                }
+            })
+            .catch(() => {
+                const msgDiv = document.getElementById('statusChangeMsg');
+                msgDiv.innerHTML = '<span class="text-danger">Помилка зміни статусу</span>';
+            });
+        });
+    }
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Новий продукт</h1>
+        <a href="{{ url_for('products.index') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Назад до списку
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" id="newProductForm" novalidate>
+                <div class="mb-3">
+                    <label for="name" class="form-label">Назва</label>
+                    <input type="text" class="form-control" id="name" name="name" 
+                           required minlength="2" maxlength="100"
+                           pattern="[A-Za-zА-Яа-яЇїІіЄєҐґ\s\-]+"
+                           title="Назва може містити лише літери, пробіли та дефіс">
+                    <div class="invalid-feedback">
+                        Будь ласка, введіть коректну назву продукту (2-100 символів)
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="unit_id" class="form-label">Одиниця виміру</label>
+                    <select class="form-select" id="unit_id" name="unit_id" required>
+                        <option value="">Виберіть одиницю виміру</option>
+                        {% for unit in units %}
+                        <option value="{{ unit.UnitID }}">{{ unit.UnitName }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="invalid-feedback">
+                        Будь ласка, виберіть одиницю виміру
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="description" class="form-label">Опис</label>
+                    <textarea class="form-control" id="description" name="description" 
+                              rows="3" maxlength="250"></textarea>
+                    <div class="form-text">Максимум 250 символів</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="quantity" class="form-label">Кількість на складі</label>
+                    <input type="number" class="form-control" id="quantity" name="quantity" min="0" step="1" value="0" required>
+                </div>
+
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="is_available" 
+                           name="is_available" checked>
+                    <label class="form-check-label" for="is_available">Доступний</label>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <i class="bi bi-save"></i> Зберегти
+                    </button>
+                    <a href="{{ url_for('products.index') }}" class="btn btn-secondary">
+                        Скасувати
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('newProductForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Збереження...';
+        }
+        form.classList.add('was-validated');
+    });
+
+    // Real-time validation
+    const nameInput = document.getElementById('name');
+    nameInput.addEventListener('input', function() {
+        if (this.value.length < 2) {
+            this.setCustomValidity('Назва повинна містити мінімум 2 символи');
+        } else if (this.value.length > 100) {
+            this.setCustomValidity('Назва не може перевищувати 100 символів');
+        } else if (!/^[A-Za-zА-Яа-яЇїІіЄєҐґ\s\-]+$/.test(this.value)) {
+            this.setCustomValidity('Назва може містити лише літери, пробіли та дефіс');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+
+    const descriptionInput = document.getElementById('description');
+    descriptionInput.addEventListener('input', function() {
+        if (this.value.length > 250) {
+            this.value = this.value.substring(0, 250);
+        }
+    });
+});
+</script>
+{% endblock %} 

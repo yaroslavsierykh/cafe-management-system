@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+
+{% block title %}Управління залами - Кафе{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>Управління залами</h2>
+        </div>
+        <div class="col text-end">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newHallModal">
+                <i class="bi bi-plus-lg"></i> Додати зал
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for hall in halls %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ hall.Name }}</h5>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editHallModal" 
+                            data-hall-id="{{ hall.HallID }}"
+                            data-hall-name="{{ hall.Name }}"
+                            data-hall-notes="{{ hall.Notes }}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteHallModal" 
+                            data-hall-id="{{ hall.HallID }}"
+                            data-hall-name="{{ hall.Name }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Столики</h6>
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newTableModal" data-hall-id="{{ hall.HallID }}">
+                            <i class="bi bi-plus-lg"></i> Додати стіл
+                        </button>
+                    </div>
+                    <div class="row row-cols-2 g-3">
+                        {% for table in hall.tables %}
+                        <div class="col">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ table.TableName }}</h6>
+                                    <p class="card-text">
+                                        <small class="text-muted">{{ table.SeatsCount }} місць</small><br>
+                                        <span class="badge {% if table.status.StatusName == 'Вільний' %}bg-success{% elif table.status.StatusName == 'Резерв' %}bg-warning{% else %}bg-danger{% endif %}">
+                                            {{ table.status.StatusName }}
+                                        </span>
+                                        {% set unpaid_orders = table.orders | selectattr('PaidDateTime', '==', None) | list %}
+                                        <br>
+                                        <form class="d-inline change-table-status-form" data-table-id="{{ table.TableID }}">
+                                            <select class="form-select form-select-sm d-inline w-auto" name="status_id" {% if unpaid_orders %}disabled title="Є неоплачені замовлення"{% endif %}>
+                                                {% for status in table.status.__class__.query.all() %}
+                                                <option value="{{ status.TableStatusID }}" {% if status.TableStatusID == table.TableStatusID %}selected{% endif %}>{{ status.StatusName }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </form>
+                                        {% if unpaid_orders %}
+                                        <span class="text-danger small">Статус недоступний: є неоплачені замовлення</span>
+                                        {% endif %}
+                                    </p>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editTableModal" 
+                                            data-table-id="{{ table.TableID }}"
+                                            data-table-name="{{ table.TableName }}"
+                                            data-table-seats="{{ table.SeatsCount }}"
+                                            data-table-hall="{{ hall.HallID }}">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteTableModal" 
+                                            data-table-id="{{ table.TableID }}"
+                                            data-table-name="{{ table.TableName }}">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- New Hall Modal -->
+<div class="modal fade" id="newHallModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Новий зал</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newHallForm">
+                    <div class="mb-3">
+                        <label class="form-label">Назва залу</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Примітки</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="saveHall">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Hall Modal -->
+<div class="modal fade" id="editHallModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редагувати зал</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editHallForm">
+                    <input type="hidden" name="hall_id">
+                    <div class="mb-3">
+                        <label class="form-label">Назва залу</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Примітки</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="updateHall">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Hall Modal -->
+<div class="modal fade" id="deleteHallModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Видалення залу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ви впевнені, що хочете видалити зал "<span id="deleteHallName"></span>"?</p>
+                <p class="text-danger">Увага: Всі столики в цьому залі також будуть видалені!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteHall">Видалити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Table Modal -->
+<div class="modal fade" id="newTableModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Новий стіл</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newTableForm">
+                    <input type="hidden" name="hall_id">
+                    <div class="mb-3">
+                        <label class="form-label">Назва столика</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Кількість місць</label>
+                        <input type="number" class="form-control" name="seats_count" min="1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="saveTable">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Table Modal -->
+<div class="modal fade" id="editTableModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редагувати стіл</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTableForm">
+                    <input type="hidden" name="table_id">
+                    <div class="mb-3">
+                        <label class="form-label">Назва столика</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Кількість місць</label>
+                        <input type="number" class="form-control" name="seats_count" min="1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="updateTable">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Table Modal -->
+<div class="modal fade" id="deleteTableModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Видалення столика</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ви впевнені, що хочете видалити столик "<span id="deleteTableName"></span>"?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteTable">Видалити</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // New Hall Modal
+    document.getElementById('saveHall').addEventListener('click', function() {
+        const form = document.getElementById('newHallForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/halls/new', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // Edit Hall Modal
+    const editHallModal = document.getElementById('editHallModal');
+    editHallModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const form = this.querySelector('#editHallForm');
+        
+        form.querySelector('[name="hall_id"]').value = button.getAttribute('data-hall-id');
+        form.querySelector('[name="name"]').value = button.getAttribute('data-hall-name');
+        form.querySelector('[name="notes"]').value = button.getAttribute('data-hall-notes');
+    });
+
+    document.getElementById('updateHall').addEventListener('click', function() {
+        const form = document.getElementById('editHallForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/halls/edit', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // Delete Hall Modal
+    const deleteHallModal = document.getElementById('deleteHallModal');
+    deleteHallModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const hallId = button.getAttribute('data-hall-id');
+        const hallName = button.getAttribute('data-hall-name');
+        
+        this.querySelector('#deleteHallName').textContent = hallName;
+        this.querySelector('#confirmDeleteHall').setAttribute('data-hall-id', hallId);
+    });
+
+    document.getElementById('confirmDeleteHall').addEventListener('click', function() {
+        const hallId = this.getAttribute('data-hall-id');
+        
+        fetch(`/api/halls/delete/${hallId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // New Table Modal
+    const newTableModal = document.getElementById('newTableModal');
+    newTableModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const hallId = button.getAttribute('data-hall-id');
+        
+        const form = this.querySelector('#newTableForm');
+        form.querySelector('[name="hall_id"]').value = hallId;
+    });
+
+    document.getElementById('saveTable').addEventListener('click', function() {
+        const form = document.getElementById('newTableForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/tables/new', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // Edit Table Modal
+    const editTableModal = document.getElementById('editTableModal');
+    editTableModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const form = this.querySelector('#editTableForm');
+        
+        form.querySelector('[name="table_id"]').value = button.getAttribute('data-table-id');
+        form.querySelector('[name="name"]').value = button.getAttribute('data-table-name');
+        form.querySelector('[name="seats_count"]').value = button.getAttribute('data-table-seats');
+    });
+
+    document.getElementById('updateTable').addEventListener('click', function() {
+        const form = document.getElementById('editTableForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/tables/edit', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // Delete Table Modal
+    const deleteTableModal = document.getElementById('deleteTableModal');
+    deleteTableModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const tableId = button.getAttribute('data-table-id');
+        const tableName = button.getAttribute('data-table-name');
+        
+        this.querySelector('#deleteTableName').textContent = tableName;
+        this.querySelector('#confirmDeleteTable').setAttribute('data-table-id', tableId);
+    });
+
+    document.getElementById('confirmDeleteTable').addEventListener('click', function() {
+        const tableId = this.getAttribute('data-table-id');
+        
+        fetch(`/api/tables/delete/${tableId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    document.querySelectorAll('.change-table-status-form select[name="status_id"]').forEach(function(select) {
+        select.addEventListener('change', function(e) {
+            var form = select.closest('.change-table-status-form');
+            var tableId = form.getAttribute('data-table-id');
+            var statusId = select.value;
+            fetch(`/admin/tables/${tableId}/change_status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `status_id=${statusId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.error || 'Помилка при зміні статусу столу');
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %} 

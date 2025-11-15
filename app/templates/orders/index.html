@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Замовлення - Кафе{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Замовлення</h1>
+        <a href="{{ url_for('orders.new') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Нове замовлення
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                    <a class="nav-link {{ 'active' if status == 'active' }}" 
+                       href="{{ url_for('orders.index', status='active') }}">
+                        Активні
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ 'active' if status == 'all' }}" 
+                       href="{{ url_for('orders.index', status='all') }}">
+                        Всі
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Дата</th>
+                            <th>Тип</th>
+                            <th>Стіл</th>
+                            <th>Клієнт</th>
+                            <th>Сума</th>
+                            <th>Статус</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>{{ order.OrderID }}</td>
+                            <td>{{ order.OrderDateTime.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ order.type.TypeName }}</td>
+                            <td>
+                                {% if order.TableID %}
+                                    {{ order.table.TableName }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if order.CustomerID %}
+                                    {% if order.customer.person %}
+                                        {{ order.customer.person.LastName }} {{ order.customer.person.FirstName }}
+                                    {% else %}
+                                        {{ order.customer.CompanyName }}
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ "%.2f"|format(order.TotalAmount) }} ₴</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if order.PaidDateTime else 'primary' }}">
+                                    {{ 'Оплачено' if order.PaidDateTime else order.status.StatusName }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('orders.view_order', order_id=order.OrderID) }}" 
+                                   class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">Замовлень не знайдено</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

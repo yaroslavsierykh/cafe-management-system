@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Панель адміністратора - Кафе{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Панель адміністратора</h1>
+    
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Управління персоналом</h5>
+                    <p class="card-text">Додавання, редагування та видалення співробітників, управління ролями.</p>
+                    <a href="{{ url_for('admin.employees') }}" class="btn btn-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Управління залами</h5>
+                    <p class="card-text">Додавання, редагування та видалення залів та столиків.</p>
+                    <a href="{{ url_for('admin.halls') }}" class="btn btn-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Управління контрактами</h5>
+                    <p class="card-text">Управління постачальниками, контрактами та поставками.</p>
+                    <a href="{{ url_for('admin.contracts') }}" class="btn btn-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <a href="/register" class="btn btn-success">Додати працівника</a>
+        </div>
+    </div>
+</div>
+{% endblock %} 

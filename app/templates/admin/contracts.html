@@ -1,0 +1,930 @@
+{% extends "base.html" %}
+
+{% block title %}Управління контрактами - Кафе{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>Управління контрактами</h2>
+        </div>
+        <div class="col text-end">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newSupplierModal">
+                <i class="bi bi-plus-lg"></i> Додати постачальника
+            </button>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#newContractModal">
+                <i class="bi bi-file-earmark-plus"></i> Новий контракт
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Постачальники</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for supplier in suppliers %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">
+                                        {{ supplier.CompanyName }}
+                                        <span class="badge {% if supplier.SupplierType == 'FOP' %}bg-info{% else %}bg-primary{% endif %}">
+                                            {{ supplier.SupplierType }}
+                                        </span>
+                                    </h6>
+                                    <small class="text-muted">
+                                        {% if supplier.ContactPerson %}
+                                        Контактна особа: {{ supplier.ContactPerson }}<br>
+                                        {% endif %}
+                                        Телефон: {{ supplier.Phone }}
+                                        {% if supplier.Email %}<br>Email: {{ supplier.Email }}{% endif %}
+                                        {% if supplier.SupplierType == 'FOP' %}
+                                            {% if supplier.FOPNumber %}<br>Свідоцтво ФОП: {{ supplier.FOPNumber }}{% endif %}
+                                            {% if supplier.FOPRegistrationDate %}<br>Дата реєстрації: {{ supplier.FOPRegistrationDate.strftime('%d.%m.%Y') }}{% endif %}
+                                        {% else %}
+                                            {% if supplier.EDRPOU %}<br>ЄДРПОУ: {{ supplier.EDRPOU }}{% endif %}
+                                            {% if supplier.LegalForm %}<br>Форма: {{ supplier.LegalForm }}{% endif %}
+                                            {% if supplier.DirectorName %}<br>Директор: {{ supplier.DirectorName }}{% endif %}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editSupplierModal" 
+                                        data-supplier-id="{{ supplier.SupplierID }}"
+                                        data-supplier-type="{{ supplier.SupplierType }}"
+                                        data-company-name="{{ supplier.CompanyName }}"
+                                        data-contact-person="{{ supplier.ContactPerson }}"
+                                        data-phone="{{ supplier.Phone }}"
+                                        data-email="{{ supplier.Email }}"
+                                        data-address="{{ supplier.Address }}"
+                                        data-tax-number="{{ supplier.TaxNumber }}"
+                                        data-fop-number="{{ supplier.FOPNumber }}"
+                                        data-fop-registration-date="{{ supplier.FOPRegistrationDate.strftime('%Y-%m-%d') if supplier.FOPRegistrationDate }}"
+                                        data-edrpou="{{ supplier.EDRPOU }}"
+                                        data-legal-form="{{ supplier.LegalForm }}"
+                                        data-director-name="{{ supplier.DirectorName }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteSupplierModal" 
+                                        data-supplier-id="{{ supplier.SupplierID }}"
+                                        data-company-name="{{ supplier.CompanyName }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Активні контракти</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for contract in contracts %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">
+                                    <a href="{{ url_for('admin.contract_detail', contract_id=contract.ContractID) }}">
+                                        {{ contract.ContractNumber }}
+                                    </a>
+                                </h6>
+                                <small class="text-muted">{{ contract.StartDate.strftime('%d.%m.%Y') }} - {{ contract.EndDate.strftime('%d.%m.%Y') if contract.EndDate else 'Безстроково' }}</small>
+                            </div>
+                            <p class="mb-1">{{ contract.Description }}</p>
+                            <small class="text-muted">
+                                Постачальник: {{ contract.supplier.CompanyName }}<br>
+                                Сума: {{ "%.2f"|format(contract.TotalValue) }} ₴
+                            </small>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newDeliveryModal" data-contract-id="{{ contract.ContractID }}">
+                                    <i class="bi bi-truck"></i> Нова поставка
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editContractModal" 
+                                    data-contract-id="{{ contract.ContractID }}"
+                                    data-contract-number="{{ contract.ContractNumber }}"
+                                    data-start-date="{{ contract.StartDate.strftime('%Y-%m-%d') }}"
+                                    data-end-date="{{ contract.EndDate.strftime('%Y-%m-%d') if contract.EndDate }}"
+                                    data-description="{{ contract.Description }}"
+                                    data-total-value="{{ contract.TotalValue }}"
+                                    data-payment-terms="{{ contract.PaymentTerms }}"
+                                    data-delivery-terms="{{ contract.DeliveryTerms }}"
+                                    data-supplier-id="{{ contract.SupplierID }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteContractModal" 
+                                    data-contract-id="{{ contract.ContractID }}"
+                                    data-contract-number="{{ contract.ContractNumber }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Останні поставки</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for delivery in deliveries %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">Поставка #{{ delivery.DeliveryID }}</h6>
+                                <small class="text-muted">{{ delivery.DeliveryDate.strftime('%d.%m.%Y %H:%M') }}</small>
+                            </div>
+                            <p class="mb-1">
+                                Контракт: {{ delivery.contract.ContractNumber }}<br>
+                                Постачальник: {{ delivery.supplier.CompanyName }}
+                            </p>
+                            <small class="text-muted">
+                                Сума: {{ "%.2f"|format(delivery.TotalAmount) }} ₴<br>
+                                Статус: <span class="badge {% if delivery.Status == 'delivered' %}bg-success{% elif delivery.Status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ delivery.Status }}
+                                </span>
+                            </small>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewDeliveryModal" data-delivery-id="{{ delivery.DeliveryID }}">
+                                    <i class="bi bi-eye"></i> Деталі
+                                </button>
+                                {% if delivery.Status == 'pending' %}
+                                <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#completeDeliveryModal" data-delivery-id="{{ delivery.DeliveryID }}">
+                                    <i class="bi bi-check-lg"></i> Завершити
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Supplier Modal -->
+<div class="modal fade" id="newSupplierModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Новий постачальник</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newSupplierForm">
+                    <div class="mb-3">
+                        <label class="form-label">Тип постачальника</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="supplier_type" id="type_fop" value="FOP" checked>
+                            <label class="btn btn-outline-primary" for="type_fop">ФОП</label>
+                            
+                            <input type="radio" class="btn-check" name="supplier_type" id="type_tov" value="TOV">
+                            <label class="btn btn-outline-primary" for="type_tov">ТОВ</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Назва компанії</label>
+                        <input type="text" class="form-control" name="company_name" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Контактна особа</label>
+                        <input type="text" class="form-control" name="contact_person">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Телефон</label>
+                        <input type="tel" class="form-control" name="phone" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" name="email">
+                    </div>
+
+
+                    <div class="mb-3">
+                        <label class="form-label">Податковий номер</label>
+                        <input type="text" class="form-control" name="tax_number" required>
+                    </div>
+
+                    <!-- Поля для ФОП -->
+                    <div id="fop_fields">
+                        <div class="mb-3">
+                            <label class="form-label">Номер свідоцтва ФОП</label>
+                            <input type="text" class="form-control" name="fop_number">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Дата реєстрації ФОП</label>
+                            <input type="date" class="form-control" name="fop_registration_date">
+                        </div>
+                    </div>
+
+                    <!-- Поля для ТОВ -->
+                    <div id="tov_fields" class="d-none">
+                        <div class="mb-3">
+                            <label class="form-label">ЄДРПОУ</label>
+                            <input type="text" class="form-control" name="edrpou">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Організаційно-правова форма</label>
+                            <input type="text" class="form-control" name="legal_form">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">ПІБ директора</label>
+                            <input type="text" class="form-control" name="director_name">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="saveSupplier">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Supplier Modal -->
+<div class="modal fade" id="editSupplierModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редагувати постачальника</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editSupplierForm">
+                    <input type="hidden" name="supplier_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Тип постачальника</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="supplier_type" id="edit_type_fop" value="FOP">
+                            <label class="btn btn-outline-primary" for="edit_type_fop">ФОП</label>
+                            
+                            <input type="radio" class="btn-check" name="supplier_type" id="edit_type_tov" value="TOV">
+                            <label class="btn btn-outline-primary" for="edit_type_tov">ТОВ</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Назва компанії</label>
+                        <input type="text" class="form-control" name="company_name" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Контактна особа</label>
+                        <input type="text" class="form-control" name="contact_person">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Телефон</label>
+                        <input type="tel" class="form-control" name="phone" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" name="email">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Податковий номер</label>
+                        <input type="text" class="form-control" name="tax_number" required>
+                    </div>
+
+                    <!-- Поля для ФОП -->
+                    <div id="edit_fop_fields">
+                        <div class="mb-3">
+                            <label class="form-label">Номер свідоцтва ФОП</label>
+                            <input type="text" class="form-control" name="fop_number">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Дата реєстрації ФОП</label>
+                            <input type="date" class="form-control" name="fop_registration_date">
+                        </div>
+                    </div>
+
+                    <!-- Поля для ТОВ -->
+                    <div id="edit_tov_fields" class="d-none">
+                        <div class="mb-3">
+                            <label class="form-label">ЄДРПОУ</label>
+                            <input type="text" class="form-control" name="edrpou">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Організаційно-правова форма</label>
+                            <input type="text" class="form-control" name="legal_form">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">ПІБ директора</label>
+                            <input type="text" class="form-control" name="director_name">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="updateSupplier">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Supplier Modal -->
+<div class="modal fade" id="deleteSupplierModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Видалення постачальника</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ви впевнені, що хочете видалити постачальника "<span id="deleteSupplierName"></span>"?</p>
+                <p class="text-danger">Увага: Всі контракти та поставки цього постачальника також будуть видалені!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteSupplier">Видалити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Contract Modal -->
+<div class="modal fade" id="newContractModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Новий контракт</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newContractForm">
+                    <div class="mb-3">
+                        <label class="form-label">Постачальник</label>
+                        <select class="form-select" name="supplier_id" required>
+                            <option value="">Виберіть постачальника...</option>
+                            {% for supplier in suppliers %}
+                            <option value="{{ supplier.SupplierID }}">{{ supplier.CompanyName }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Номер контракту</label>
+                        <input type="text" class="form-control" name="contract_number" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Дата початку</label>
+                        <input type="date" class="form-control" name="start_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Дата закінчення</label>
+                        <input type="date" class="form-control" name="end_date">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Опис</label>
+                        <textarea class="form-control" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Загальна сума</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" name="total_value" step="0.01" min="0" required>
+                            <span class="input-group-text">₴</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Умови оплати</label>
+                        <textarea class="form-control" name="payment_terms" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Умови доставки</label>
+                        <textarea class="form-control" name="delivery_terms" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="saveContract">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Contract Modal -->
+<div class="modal fade" id="editContractModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редагувати контракт</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editContractForm">
+                    <input type="hidden" name="contract_id">
+                    <div class="mb-3">
+                        <label class="form-label">Постачальник</label>
+                        <select class="form-select" name="supplier_id" required>
+                            {% for supplier in suppliers %}
+                            <option value="{{ supplier.SupplierID }}">{{ supplier.CompanyName }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Номер контракту</label>
+                        <input type="text" class="form-control" name="contract_number" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Дата початку</label>
+                        <input type="date" class="form-control" name="start_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Дата закінчення</label>
+                        <input type="date" class="form-control" name="end_date">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Опис</label>
+                        <textarea class="form-control" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Загальна сума</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" name="total_value" step="0.01" min="0" required>
+                            <span class="input-group-text">₴</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Умови оплати</label>
+                        <textarea class="form-control" name="payment_terms" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Умови доставки</label>
+                        <textarea class="form-control" name="delivery_terms" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="updateContract">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Contract Modal -->
+<div class="modal fade" id="deleteContractModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Видалення контракту</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ви впевнені, що хочете видалити контракт "<span id="deleteContractNumber"></span>"?</p>
+                <p class="text-danger">Увага: Всі поставки за цим контрактом також будуть видалені!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteContract">Видалити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Delivery Modal -->
+<div class="modal fade" id="newDeliveryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Нова поставка</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newDeliveryForm">
+                    <input type="hidden" name="contract_id">
+                    <div class="mb-3">
+                        <label class="form-label">Дата поставки</label>
+                        <input type="datetime-local" class="form-control" name="delivery_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Примітки</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Товари</label>
+                        <div id="deliveryItems">
+                            <div class="delivery-item mb-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <select class="form-select" name="product_id[]" required>
+                                            <option value="">Виберіть товар...</option>
+                                            {% for product in products %}
+                                            <option value="{{ product.ProductID }}">{{ product.ProductName }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="number" class="form-control" name="quantity[]" placeholder="Кількість" min="0.001" step="0.001" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" name="unit_price[]" placeholder="Ціна" min="0" step="0.01" required>
+                                            <span class="input-group-text">₴</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="addDeliveryItem">
+                            <i class="bi bi-plus-lg"></i> Додати товар
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="saveDelivery">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Delivery Modal -->
+<div class="modal fade" id="viewDeliveryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Деталі поставки</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6>Інформація про поставку</h6>
+                        <p>
+                            <strong>Номер поставки:</strong> <span id="deliveryNumber"></span><br>
+                            <strong>Дата:</strong> <span id="deliveryDate"></span><br>
+                            <strong>Статус:</strong> <span id="deliveryStatus"></span><br>
+                            <strong>Контракт:</strong> <span id="deliveryContract"></span><br>
+                            <strong>Постачальник:</strong> <span id="deliverySupplier"></span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Фінансова інформація</h6>
+                        <p>
+                            <strong>Загальна сума:</strong> <span id="deliveryTotal"></span><br>
+                            <strong>Примітки:</strong> <span id="deliveryNotes"></span>
+                        </p>
+                    </div>
+                </div>
+                <h6>Товари</h6>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Товар</th>
+                                <th>Кількість</th>
+                                <th>Ціна за одиницю</th>
+                                <th>Загальна сума</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deliveryItemsList">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Complete Delivery Modal -->
+<div class="modal fade" id="completeDeliveryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Завершення поставки</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ви впевнені, що хочете завершити поставку #<span id="completeDeliveryNumber"></span>?</p>
+                <p class="text-warning">Після завершення поставки статус не можна буде змінити!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-success" id="confirmCompleteDelivery">Завершити</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Функція для перемикання полів залежно від типу постачальника
+    function toggleSupplierFields(type, prefix = '') {
+        const fopFields = document.getElementById(prefix + 'fop_fields');
+        const tovFields = document.getElementById(prefix + 'tov_fields');
+        
+        if (type === 'FOP') {
+            fopFields.classList.remove('d-none');
+            tovFields.classList.add('d-none');
+        } else {
+            fopFields.classList.add('d-none');
+            tovFields.classList.remove('d-none');
+        }
+    }
+
+    // Обробники для перемикання типів постачальника
+    document.querySelectorAll('input[name="supplier_type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const prefix = this.id.startsWith('edit_') ? 'edit_' : '';
+            toggleSupplierFields(this.value, prefix);
+        });
+    });
+
+    // New Supplier
+    document.getElementById('saveSupplier').addEventListener('click', function() {
+        const form = document.getElementById('newSupplierForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/suppliers/new', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // Edit Supplier
+    const editSupplierModal = document.getElementById('editSupplierModal');
+    editSupplierModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const form = this.querySelector('#editSupplierForm');
+        
+        form.querySelector('[name="supplier_id"]').value = button.getAttribute('data-supplier-id');
+        form.querySelector('[name="supplier_type"]').value = button.getAttribute('data-supplier-type');
+        form.querySelector('[name="company_name"]').value = button.getAttribute('data-company-name');
+        form.querySelector('[name="contact_person"]').value = button.getAttribute('data-contact-person');
+        form.querySelector('[name="phone"]').value = button.getAttribute('data-phone');
+        form.querySelector('[name="email"]').value = button.getAttribute('data-email');
+        form.querySelector('[name="address"]').value = button.getAttribute('data-address');
+        form.querySelector('[name="tax_number"]').value = button.getAttribute('data-tax-number');
+        form.querySelector('[name="fop_number"]').value = button.getAttribute('data-fop-number');
+        form.querySelector('[name="fop_registration_date"]').value = button.getAttribute('data-fop-registration-date');
+        form.querySelector('[name="edrpou"]').value = button.getAttribute('data-edrpou');
+        form.querySelector('[name="legal_form"]').value = button.getAttribute('data-legal-form');
+        form.querySelector('[name="director_name"]').value = button.getAttribute('data-director-name');
+
+        // Встановлюємо правильний тип постачальника
+        const type = button.getAttribute('data-supplier-type');
+        document.querySelector(`#edit_type_${type.toLowerCase()}`).checked = true;
+        toggleSupplierFields(type, 'edit_');
+    });
+
+    document.getElementById('updateSupplier').addEventListener('click', function() {
+        const form = document.getElementById('editSupplierForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/suppliers/edit', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // Delete Supplier
+    const deleteSupplierModal = document.getElementById('deleteSupplierModal');
+    deleteSupplierModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const supplierId = button.getAttribute('data-supplier-id');
+        const companyName = button.getAttribute('data-company-name');
+        
+        this.querySelector('#deleteSupplierName').textContent = companyName;
+        this.querySelector('#confirmDeleteSupplier').setAttribute('data-supplier-id', supplierId);
+    });
+
+    document.getElementById('confirmDeleteSupplier').addEventListener('click', function() {
+        const supplierId = this.getAttribute('data-supplier-id');
+        
+        fetch(`/api/suppliers/delete/${supplierId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // New Contract
+    document.getElementById('saveContract').addEventListener('click', function() {
+        const form = document.getElementById('newContractForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/contracts/new', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // Edit Contract
+    const editContractModal = document.getElementById('editContractModal');
+    editContractModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const form = this.querySelector('#editContractForm');
+        
+        form.querySelector('[name="contract_id"]').value = button.getAttribute('data-contract-id');
+        form.querySelector('[name="contract_number"]').value = button.getAttribute('data-contract-number');
+        form.querySelector('[name="start_date"]').value = button.getAttribute('data-start-date');
+        form.querySelector('[name="end_date"]').value = button.getAttribute('data-end-date');
+        form.querySelector('[name="description"]').value = button.getAttribute('data-description');
+        form.querySelector('[name="total_value"]').value = button.getAttribute('data-total-value');
+        form.querySelector('[name="payment_terms"]').value = button.getAttribute('data-payment-terms');
+        form.querySelector('[name="delivery_terms"]').value = button.getAttribute('data-delivery-terms');
+        form.querySelector('[name="supplier_id"]').value = button.getAttribute('data-supplier-id');
+    });
+
+    document.getElementById('updateContract').addEventListener('click', function() {
+        const form = document.getElementById('editContractForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/contracts/edit', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // Delete Contract
+    const deleteContractModal = document.getElementById('deleteContractModal');
+    deleteContractModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const contractId = button.getAttribute('data-contract-id');
+        const contractNumber = button.getAttribute('data-contract-number');
+        
+        this.querySelector('#deleteContractNumber').textContent = contractNumber;
+        this.querySelector('#confirmDeleteContract').setAttribute('data-contract-id', contractId);
+    });
+
+    document.getElementById('confirmDeleteContract').addEventListener('click', function() {
+        const contractId = this.getAttribute('data-contract-id');
+        
+        fetch(`/api/contracts/delete/${contractId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // New Delivery
+    const newDeliveryModal = document.getElementById('newDeliveryModal');
+    newDeliveryModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const contractId = button.getAttribute('data-contract-id');
+        
+        const form = this.querySelector('#newDeliveryForm');
+        form.querySelector('[name="contract_id"]').value = contractId;
+    });
+
+    document.getElementById('addDeliveryItem').addEventListener('click', function() {
+        const template = document.querySelector('.delivery-item').cloneNode(true);
+        template.querySelectorAll('input, select').forEach(input => input.value = '');
+        document.getElementById('deliveryItems').appendChild(template);
+    });
+
+    document.getElementById('saveDelivery').addEventListener('click', function() {
+        const form = document.getElementById('newDeliveryForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/deliveries/new', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // View Delivery
+    const viewDeliveryModal = document.getElementById('viewDeliveryModal');
+    viewDeliveryModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const deliveryId = button.getAttribute('data-delivery-id');
+        
+        fetch(`/api/deliveries/${deliveryId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const delivery = data.delivery;
+                    document.getElementById('deliveryNumber').textContent = delivery.DeliveryID;
+                    document.getElementById('deliveryDate').textContent = new Date(delivery.DeliveryDate).toLocaleString();
+                    document.getElementById('deliveryStatus').textContent = delivery.Status;
+                    document.getElementById('deliveryContract').textContent = delivery.contract.ContractNumber;
+                    document.getElementById('deliverySupplier').textContent = delivery.supplier.CompanyName;
+                    document.getElementById('deliveryTotal').textContent = `${delivery.TotalAmount} ₴`;
+                    document.getElementById('deliveryNotes').textContent = delivery.Notes || '-';
+
+                    const itemsList = document.getElementById('deliveryItemsList');
+                    itemsList.innerHTML = '';
+                    delivery.items.forEach(item => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.product.ProductName}</td>
+                            <td>${item.Quantity}</td>
+                            <td>${item.UnitPrice} ₴</td>
+                            <td>${item.TotalPrice} ₴</td>
+                        `;
+                        itemsList.appendChild(row);
+                    });
+                } else {
+                    alert(data.error);
+                }
+            });
+    });
+
+    // Complete Delivery
+    const completeDeliveryModal = document.getElementById('completeDeliveryModal');
+    completeDeliveryModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const deliveryId = button.getAttribute('data-delivery-id');
+        
+        this.querySelector('#completeDeliveryNumber').textContent = deliveryId;
+        this.querySelector('#confirmCompleteDelivery').setAttribute('data-delivery-id', deliveryId);
+    });
+
+    document.getElementById('confirmCompleteDelivery').addEventListener('click', function() {
+        const deliveryId = this.getAttribute('data-delivery-id');
+        
+        fetch(`/api/deliveries/${deliveryId}/complete`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

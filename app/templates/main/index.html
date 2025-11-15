@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Головна - Кафе{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h1 class="mb-4">Панель управління</h1>
+
+            <!-- Today's Statistics -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Замовлень сьогодні</h5>
+                            <h3 class="mb-0">{{ shift_stats.orders_count }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Виручка сьогодні</h5>
+                            <h3 class="mb-0">{{ "%.2f"|format(shift_stats.revenue) }} грн</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Середній чек</h5>
+                            <h3 class="mb-0">{{ "%.2f"|format(shift_stats.average_check) }} грн</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Shift Info -->
+            {% if current_shift %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Поточна зміна</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1">Відкрито:</p>
+                            <h5>{{ current_shift.OpenDateTime.strftime('%H:%M') }}</h5>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1">Тривалість:</p>
+                            <h5>{{ ((now - current_shift.OpenDateTime).total_seconds() / 3600)|round(1) }} год.</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Top Dishes -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Топ страв сьогодні</h5>
+                </div>
+                <div class="card-body">
+                    {% if top_dishes %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Страва</th>
+                                    <th>Кількість</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dish in top_dishes %}
+                                <tr>
+                                    <td>{{ dish.name }}</td>
+                                    <td>{{ dish.count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Сьогодні ще не було продажів</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Active Employees -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Активні працівники</h5>
+                </div>
+                <div class="card-body">
+                    {% if active_employees %}
+                    <ul class="list-group">
+                        {% for employee in active_employees %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ employee.person.FirstName }} {{ employee.person.LastName }}
+                            <span class="badge bg-primary rounded-pill">{{ employee.role.RoleName }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted mb-0">Немає активних працівників</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Швидкі дії</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('orders.index') }}" class="btn btn-primary">
+                            <i class="bi bi-receipt"></i> Замовлення
+                        </a>
+                        {% if not current_shift %}
+                        <form action="{{ url_for('shifts.open_shift') }}" method="post">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-play"></i> Відкрити зміну
+                            </button>
+                        </form>
+                        {% else %}
+                        <form action="{{ url_for('shifts.close_shift') }}" method="post">
+                            <button type="submit" class="btn btn-warning w-100">
+                                <i class="bi bi-stop"></i> Закрити зміну
+                            </button>
+                        </form>
+                        {% endif %}
+                        <a href="{{ url_for('menu.index') }}" class="btn btn-info">
+                            <i class="bi bi-journal-text"></i> Меню
+                        </a>
+                        {% if current_user.is_authenticated and current_user.role and current_user.role.RoleName == 'Адміністратор' %}
+                        <a href="{{ url_for('admin.contracts') }}" class="btn btn-dark">
+                            <i class="bi bi-file-earmark-text"></i> Управління контрактами
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

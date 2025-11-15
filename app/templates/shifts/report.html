@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Звіт по змінах{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Звіт по змінах</h1>
+        <a href="{{ url_for('shifts.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад до змін
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="from_date" class="form-label">Від дати</label>
+                    <input type="date" class="form-control" id="from_date" name="from_date" 
+                           value="{{ from_date }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="to_date" class="form-label">До дати</label>
+                    <input type="date" class="form-control" id="to_date" name="to_date" 
+                           value="{{ to_date }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="employee_id" class="form-label">Працівник</label>
+                    <select class="form-select" id="employee_id" name="employee_id">
+                        <option value="">Всі працівники</option>
+                        {% for employee in employees %}
+                        <option value="{{ employee.EmployeeID }}" 
+                                {% if employee.EmployeeID == selected_employee %}selected{% endif %}>
+                            {{ employee.person.FirstName }} {{ employee.person.LastName }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Фільтрувати
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Загальна виручка</h5>
+                    <h3 class="mb-0">{{ "%.2f"|format(shifts|map(attribute='TotalRevenue')|map('default', 0, true)|sum) }} грн</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Всього страв продано</h5>
+                    <h3 class="mb-0">{{ shifts|map(attribute='TotalDishesSold')|map('default', 0, true)|sum }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Кількість змін</h5>
+                    <h3 class="mb-0">{{ shifts|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Час відкриття</th>
+                            <th>Час закінчення</th>
+                            <th>Тривалість</th>
+                            <th>Працівник</th>
+                            <th>Виручка</th>
+
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for shift in shifts %}
+                        <tr>
+                            <td>{{ shift.OpenDateTime.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ shift.OpenDateTime.strftime('%H:%M') }}</td>
+                            <td>
+                                {% if shift.CloseDateTime %}
+                                {{ shift.CloseDateTime.strftime('%H:%M') }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if shift.CloseDateTime %}
+                                {{ shift.CloseDateTime - shift.OpenDateTime }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>{{ shift.employee.person.FirstName }} {{ shift.employee.person.LastName }}</td>
+                            <td>{{ "%.2f"|format(shift.TotalRevenue or 0) }} грн</td>
+
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% for shift in shifts %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong>Зміна #{{ shift.ShiftID }}</strong> — {{ shift.OpenDateTime.strftime('%d.%m.%Y %H:%M') }}
+            {% if shift.CloseDateTime %}— {{ shift.CloseDateTime.strftime('%d.%m.%Y %H:%M') }}{% else %}<span class="badge bg-success ms-2">Відкрита</span>{% endif %}
+            <br>
+            Працівник: {{ shift.employee.person.LastName }} {{ shift.employee.person.FirstName }}<br>
+            <span class="text-muted">Опис: {{ shift.Notes or '-' }}</span>
+            <a href="{{ url_for('shifts.report_xlsx', shift_id=shift.ShiftID) }}" class="btn btn-sm btn-outline-success float-end" target="_blank">
+                <i class="bi bi-file-earmark-excel"></i> Завантажити Excel
+            </a>
+        </div>
+        <div class="card-body">
+            <h5>Деталізований звіт по стравам</h5>
+            {% set dishes = shift_dishes[shift.ShiftID] %}
+            {% if dishes %}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Страва</th>
+                            <th>Кількість</th>
+                            <th>Сума</th>
+                            <th>Рецепт</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in dishes.values() %}
+                        <tr>
+                            <td>{{ d.dish.DishName }}</td>
+                            <td>{{ d.quantity }}</td>
+                            <td>{{ '%.2f'|format(d.total) }} ₴</td>
+                            <td>
+                                <ul class="mb-0 small">
+                                    {% for ing in d.dish.ingredients %}
+                                    <li>{{ ing.product.ProductName }} — {{ '%.0f'|format(ing.Quantity) }} {{ ing.product.measurement_unit.UnitName }}</li>
+                                    {% else %}
+                                    <li class="text-muted">(немає інгредієнтів)</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-2">
+                <strong>Всього страв продано:</strong> {{ dishes.values()|map(attribute='quantity')|sum }}<br>
+                <strong>Загальна сума:</strong> {{ dishes.values()|map(attribute='total')|sum|round(2) }} ₴
+            </div>
+            {% else %}
+            <p class="text-muted">У цій зміні не було продано жодної страви.</p>
+            {% endif %}
+            <hr>
+            <h5>Замовлення цієї зміни</h5>
+            {% if shift.orders %}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Дата</th>
+                            <th>Сума</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in shift.orders %}
+                        <tr>
+                            <td>{{ order.OrderID }}</td>
+                            <td>{{ order.OrderDateTime.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ '%.2f'|format(order.TotalAmount) }} ₴</td>
+                            <td>{% if order.PaidDateTime %}<span class="badge bg-success">Оплачено</span>{% else %}<span class="badge bg-warning">Не оплачено</span>{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">Замовлень у цій зміні немає.</p>
+            {% endif %}
+            {% if not loop.first %}
+            <h5 class="mt-4">Замовлення попередньої зміни, не оплачені на момент відкриття цієї зміни</h5>
+            {% set prev_shift = shifts[loop.index0 - 1] %}
+            {% set prev_unpaid = prev_shift.orders | selectattr('PaidDateTime', '==', None) | list %}
+            {% if prev_unpaid %}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Дата</th>
+                            <th>Сума</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in prev_unpaid %}
+                        <tr>
+                            <td>{{ order.OrderID }}</td>
+                            <td>{{ order.OrderDateTime.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ '%.2f'|format(order.TotalAmount) }} ₴</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">Немає перехідних неоплачених замовлень.</p>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %} 

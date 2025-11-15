@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Редагування страви</h1>
+        <a href="{{ url_for('menu.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад до меню
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Назва</label>
+                    <input type="text" class="form-control" id="name" name="name" 
+                           value="{{ dish.DishName }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="category_id" class="form-label">Категорія</label>
+                    <select class="form-select" id="category_id" name="category_id" required>
+                        <option value="">Виберіть категорію</option>
+                        {% for category in categories %}
+                        <option value="{{ category.CategoryID }}" 
+                                {% if category.CategoryID == dish.CategoryID %}selected{% endif %}>
+                            {{ category.CategoryName }} ({{ category.measurement_unit.UnitName }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="price" class="form-label">Ціна (грн)</label>
+                    <input type="number" class="form-control" id="price" name="price" 
+                           step="0.01" min="0" value="{{ "%.2f"|format(dish.Price) }}" required>
+                    <small class="form-text text-muted">
+                        Увага! Зміна ціни створить нову версію страви з новою ціною.
+                    </small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="description" class="form-label">Опис</label>
+                    <textarea class="form-control" id="description" name="description" 
+                              rows="3">{{ dish.Description or '' }}</textarea>
+                </div>
+
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="is_available" name="is_available"
+                           {% if dish.IsAvailable %}checked{% endif %}>
+                    <label class="form-check-label" for="is_available">Доступна</label>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Зберегти зміни
+                    </button>
+                    <a href="{{ url_for('menu.edit_recipe', dish_id=dish.DishID) }}" 
+                       class="btn btn-info">
+                        <i class="fas fa-list"></i> Редагувати рецепт
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

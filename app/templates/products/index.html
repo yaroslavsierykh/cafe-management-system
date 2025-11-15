@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Продукти</h1>
+        <a href="{{ url_for('products.new') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Додати продукт
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Назва</th>
+                            <th>Одиниця виміру</th>
+                            <th>Опис</th>
+                            <th>Кількість</th>
+                            <th>Статус</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td>{{ product.ProductID }}</td>
+                            <td>{{ product.ProductName }}</td>
+                            <td>{{ product.measurement_unit.UnitName }}</td>
+                            <td>{{ product.Description or '-' }}</td>
+                            <td>{{ '%.0f'|format(product.Quantity) }}</td>
+                            <td>
+                                {% if product.IsAvailable %}
+                                <span class="badge bg-success">Доступний</span>
+                                {% else %}
+                                <span class="badge bg-danger">Недоступний</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex justify-content-center align-items-center gap-1">
+                                    <a href="{{ url_for('products.edit', product_id=product.ProductID) }}"
+                                       class="btn btn-outline-primary btn-sm rounded-circle d-flex align-items-center justify-content-center"
+                                       title="Редагувати">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form action="{{ url_for('products.toggle_availability', product_id=product.ProductID) }}"
+                                          method="post" class="d-inline">
+                                        <button type="submit"
+                                                class="btn btn-outline-primary btn-sm rounded-circle d-flex align-items-center justify-content-center"
+                                                title="Змінити статус">
+                                            <i class="bi bi-arrow-repeat"></i>
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('products.delete', product_id=product.ProductID) }}"
+                                          method="post" class="d-inline"
+                                          onsubmit="return confirm('Ви впевнені, що хочете видалити цей продукт?');">
+                                        <button type="submit"
+                                                class="btn btn-outline-danger btn-sm rounded-circle d-flex align-items-center justify-content-center"
+                                                title="Видалити">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                   
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal для зміни кількості -->
+<div class="modal fade" id="changeQuantityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Змінити кількість продукту</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="changeQuantityForm" method="post">
+                    <input type="hidden" id="modalProductId" name="product_id">
+                    <div class="mb-3">
+                        <label class="form-label">Назва продукту</label>
+                        <input type="text" class="form-control" id="modalProductName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Поточна кількість</label>
+                        <input type="number" class="form-control" id="modalProductQuantity" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Нова кількість</label>
+                        <input type="number" class="form-control" id="modalNewQuantity" name="new_quantity" min="0" step="0.001" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-success" id="confirmChangeQuantity">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var changeQuantityModal = document.getElementById('changeQuantityModal');
+    changeQuantityModal.addEventListener('show.bs.modal', function(event) {
+        var button = event.relatedTarget;
+        var productId = button.getAttribute('data-product-id');
+        var productName = button.getAttribute('data-product-name');
+        var productQuantity = button.getAttribute('data-product-quantity');
+        document.getElementById('modalProductId').value = productId;
+        document.getElementById('modalProductName').value = productName;
+        document.getElementById('modalProductQuantity').value = productQuantity;
+        document.getElementById('modalNewQuantity').value = productQuantity;
+    });
+    document.getElementById('confirmChangeQuantity').addEventListener('click', function() {
+        var form = document.getElementById('changeQuantityForm');
+        var productId = document.getElementById('modalProductId').value;
+        var newQuantity = document.getElementById('modalNewQuantity').value;
+        fetch(`/products/${productId}/change_quantity`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `new_quantity=${newQuantity}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Помилка при зміні кількості');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %} 

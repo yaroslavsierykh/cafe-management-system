@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}Страви - Кафе{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>Страви</h2>
+        </div>
+        <div class="col text-end">
+            <a href="{{ url_for('dishes.new') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Додати страву
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for category in categories %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ category.CategoryName }}</h5>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editCategoryModal" data-category-id="{{ category.CategoryID }}" data-category-name="{{ category.CategoryName }}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteCategoryModal" data-category-id="{{ category.CategoryID }}" data-category-name="{{ category.CategoryName }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row row-cols-1 g-3">
+                        {% for dish in category.dishes %}
+                        <div class="col">
+                            <div class="card h-100">
+                                {% if dish.image_url %}
+                                <img src="{{ dish.image_url }}" class="card-img-top" alt="{{ dish.DishName }}" style="height: 200px; object-fit: cover;">
+                                {% endif %}
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ dish.DishName }}</h5>
+                                    <p class="card-text">{{ dish.Description }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="h5 mb-0">{{ "%.2f"|format(dish.Price) }} ₴</span>
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editDishModal" 
+                                                data-dish-id="{{ dish.DishID }}"
+                                                data-dish-name="{{ dish.DishName }}"
+                                                data-dish-description="{{ dish.Description }}"
+                                                data-dish-price="{{ dish.Price }}"
+                                                data-dish-category="{{ dish.CategoryID }}"
+                                                data-dish-image="{{ dish.image_url }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteDishModal" 
+                                                data-dish-id="{{ dish.DishID }}"
+                                                data-dish-name="{{ dish.DishName }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редагувати категорію</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editCategoryForm">
+                    <input type="hidden" name="category_id">
+                    <div class="mb-3">
+                        <label class="form-label">Назва категорії</label>
+                        <input type="text" class="form-control" name="category_name" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="saveCategory">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Category Modal -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Видалення категорії</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ви впевнені, що хочете видалити категорію "<span id="deleteCategoryName"></span>"?</p>
+                <p class="text-danger">Увага: Всі страви в цій категорії також будуть видалені!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteCategory">Видалити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Dish Modal -->
+<div class="modal fade" id="editDishModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редагувати страву</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editDishForm">
+                    <input type="hidden" name="dish_id">
+                    <div class="mb-3">
+                        <label class="form-label">Назва страви</label>
+                        <input type="text" class="form-control" name="dish_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Опис</label>
+                        <textarea class="form-control" name="dish_description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ціна</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" name="dish_price" step="0.01" min="0" required>
+                            <span class="input-group-text">₴</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Категорія</label>
+                        <select class="form-select" name="dish_category" required>
+                            {% for category in categories %}
+                            <option value="{{ category.CategoryID }}">{{ category.CategoryName }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Зображення</label>
+                        <input type="file" class="form-control" name="dish_image" accept="image/*">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="saveDish">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Dish Modal -->
+<div class="modal fade" id="deleteDishModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Видалення страви</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ви впевнені, що хочете видалити страву "<span id="deleteDishName"></span>"?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteDish">Видалити</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Edit Category Modal
+    const editCategoryModal = document.getElementById('editCategoryModal');
+    editCategoryModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const categoryId = button.getAttribute('data-category-id');
+        const categoryName = button.getAttribute('data-category-name');
+        
+        const form = this.querySelector('#editCategoryForm');
+        form.querySelector('[name="category_id"]').value = categoryId;
+        form.querySelector('[name="category_name"]').value = categoryName;
+    });
+
+    // Delete Category Modal
+    const deleteCategoryModal = document.getElementById('deleteCategoryModal');
+    deleteCategoryModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const categoryId = button.getAttribute('data-category-id');
+        const categoryName = button.getAttribute('data-category-name');
+        
+        this.querySelector('#deleteCategoryName').textContent = categoryName;
+        this.querySelector('#confirmDeleteCategory').setAttribute('data-category-id', categoryId);
+    });
+
+    // Edit Dish Modal
+    const editDishModal = document.getElementById('editDishModal');
+    editDishModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const form = this.querySelector('#editDishForm');
+        
+        form.querySelector('[name="dish_id"]').value = button.getAttribute('data-dish-id');
+        form.querySelector('[name="dish_name"]').value = button.getAttribute('data-dish-name');
+        form.querySelector('[name="dish_description"]').value = button.getAttribute('data-dish-description');
+        form.querySelector('[name="dish_price"]').value = button.getAttribute('data-dish-price');
+        form.querySelector('[name="dish_category"]').value = button.getAttribute('data-dish-category');
+    });
+
+    // Delete Dish Modal
+    const deleteDishModal = document.getElementById('deleteDishModal');
+    deleteDishModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const dishId = button.getAttribute('data-dish-id');
+        const dishName = button.getAttribute('data-dish-name');
+        
+        this.querySelector('#deleteDishName').textContent = dishName;
+        this.querySelector('#confirmDeleteDish').setAttribute('data-dish-id', dishId);
+    });
+
+    // Save Category
+    document.getElementById('saveCategory').addEventListener('click', function() {
+        const form = document.getElementById('editCategoryForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/categories/edit', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // Delete Category
+    document.getElementById('confirmDeleteCategory').addEventListener('click', function() {
+        const categoryId = this.getAttribute('data-category-id');
+        
+        fetch(`/api/categories/delete/${categoryId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // Save Dish
+    document.getElementById('saveDish').addEventListener('click', function() {
+        const form = document.getElementById('editDishForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/dishes/edit', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+
+    // Delete Dish
+    document.getElementById('confirmDeleteDish').addEventListener('click', function() {
+        const dishId = this.getAttribute('data-dish-id');
+        
+        fetch(`/api/dishes/delete/${dishId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

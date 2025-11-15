@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Робочі зміни</h1>
+        <div>
+            <a href="{{ url_for('shifts.report') }}" class="btn btn-info">
+                <i class="fas fa-chart-bar"></i> Звіти
+            </a>
+            {% if not current_user.current_shift %}
+            <form method="post" action="{{ url_for('shifts.open') }}">
+                <div class="mb-3">
+                    <label for="description" class="form-label">Короткий опис зміни</label>
+                    <input type="text" class="form-control" id="description" name="description" maxlength="250">
+                </div>
+                <button type="submit" class="btn btn-success">Відкрити зміну</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Працівник</th>
+                            <th>Відкрито</th>
+                            <th>Закрито</th>
+                            <th>Виручка</th>
+                            <th>Страв продано</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for shift in shifts %}
+                        <tr>
+                            <td>{{ shift.ShiftID }}</td>
+                            <td>{{ shift.employee.person.FirstName }} {{ shift.employee.person.LastName }}</td>
+                            <td>{{ shift.OpenDateTime.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if shift.CloseDateTime %}
+                                {{ shift.CloseDateTime.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                <span class="badge bg-success">Активна</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ "%.2f"|format(shift.TotalRevenue or 0) }} грн</td>
+                            <td>{{ shift.TotalDishesSold or 0 }}</td>
+                            <td>
+                                {% if not shift.CloseDateTime and (current_user.role.RoleName == 'Адміністратор' or shift.EmployeeID == current_user.EmployeeID) %}
+                                <form action="{{ url_for('shifts.close_shift', shift_id=shift.ShiftID) }}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-warning btn-sm">
+                                        <i class="fas fa-stop"></i> Закрити
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

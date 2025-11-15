@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Деталі контракту {{ contract.ContractNumber }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Контракт №{{ contract.ContractNumber }}</h2>
+    <p><b>Постачальник:</b> {{ supplier.CompanyName or supplier.PersonName }}</p>
+    <p><b>Опис:</b> {{ contract.Description }}</p>
+    <p><b>Сума:</b> {{ '%.2f'|format(contract.TotalValue) }} ₴</p>
+    <p><b>Термін дії:</b> {{ contract.StartDate.strftime('%d.%m.%Y') }} - {{ contract.EndDate.strftime('%d.%m.%Y') if contract.EndDate else 'Безстроково' }}</p>
+    <p><b>Умови оплати:</b> {{ contract.PaymentTerms }}</p>
+    <p><b>Умови доставки:</b> {{ contract.DeliveryTerms }}</p>
+    <hr>
+    <h4>Поставки за контрактом</h4>
+    <ul>
+        {% for delivery in deliveries %}
+        <li>
+            <b>Поставка #{{ delivery.DeliveryID }}</b> — {{ delivery.DeliveryDate.strftime('%d.%m.%Y %H:%M') }}, сума: {{ '%.2f'|format(delivery.TotalAmount) }} ₴, статус: {{ delivery.Status }}
+            {% if delivery.Notes %}<br><i>Примітка: {{ delivery.Notes }}</i>{% endif %}
+        </li>
+        {% else %}
+        <li>Поставок ще не було.</li>
+        {% endfor %}
+    </ul>
+    <hr>
+    <h4>Товари у поставках</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Поставка</th>
+                <th>Товар</th>
+                <th>Кількість</th>
+                <th>Ціна за одиницю</th>
+                <th>Сума</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in items %}
+            <tr>
+                <td>#{{ row.delivery.DeliveryID }} ({{ row.delivery.DeliveryDate.strftime('%d.%m.%Y') }})</td>
+                <td>{{ row.product.ProductName }}</td>
+                <td>{{ row.item.Quantity }}</td>
+                <td>{{ '%.2f'|format(row.item.UnitPrice) }}</td>
+                <td>{{ '%.2f'|format(row.item.TotalPrice) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">Товарів у поставках ще не було.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('admin.contracts') }}" class="btn btn-secondary">Назад до контрактів</a>
+</div>
+{% endblock %} 

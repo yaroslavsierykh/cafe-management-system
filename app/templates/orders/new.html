@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+
+{% block title %}Нове замовлення - Кафе{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Нове замовлення</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Тип замовлення</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="order_type_id" id="type_table" value="1" checked>
+                            <label class="btn btn-outline-primary" for="type_table">
+                                <i class="bi bi-table"></i> За столом
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="order_type_id" id="type_delivery" value="2">
+                            <label class="btn btn-outline-primary" for="type_delivery">
+                                <i class="bi bi-truck"></i> Доставка
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="table_section" class="mb-3">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="hall_id" class="form-label">Зал</label>
+                                <select class="form-select" id="hall_id" name="hall_id">
+                                    <option value="">Виберіть зал...</option>
+                                    {% for hall in halls %}
+                                    <option value="{{ hall.HallID }}">{{ hall.Name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="table_id" class="form-label">Стіл</label>
+                                <select class="form-select" id="table_id" name="table_id" disabled>
+                                    <option value="">Спочатку виберіть зал...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="delivery_section" class="mb-3 d-none">
+                        <div class="mb-3">
+                            <label for="customer_id" class="form-label">Клієнт</label>
+                            <div class="input-group">
+                                <select class="form-select" id="customer_id" name="customer_id">
+                                    <option value="">Виберіть клієнта...</option>
+                                    {% for customer in customers %}
+                                    <option value="{{ customer.CustomerID }}">
+                                        {% if customer.person %}
+                                            {{ customer.person.LastName }} {{ customer.person.FirstName }}
+                                        {% else %}
+                                            {{ customer.CompanyName }}
+                                        {% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="address_id" class="form-label">Адреса доставки</label>
+                            <div class="input-group">
+                                <select class="form-select" id="address_id" name="address_id">
+                                    <option value="">Виберіть адресу...</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#newAddressModal">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-end">
+                        <a href="{{ url_for('orders.index') }}" class="btn btn-secondary">Скасувати</a>
+                        <button type="submit" class="btn btn-primary">Створити замовлення</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for new customer -->
+<div class="modal fade" id="newCustomerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Новий клієнт</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newCustomerForm">
+                    <div class="mb-3">
+                        <label class="form-label">Тип клієнта</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="customer_type" id="type_person" value="person" checked>
+                            <label class="btn btn-outline-primary" for="type_person">Фізична особа</label>
+                            
+                            <input type="radio" class="btn-check" name="customer_type" id="type_company" value="company">
+                            <label class="btn btn-outline-primary" for="type_company">Компанія</label>
+                        </div>
+                    </div>
+
+                    <div id="person_fields">
+                        <div class="mb-3">
+                            <label class="form-label">Прізвище</label>
+                            <input type="text" class="form-control" name="last_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ім'я</label>
+                            <input type="text" class="form-control" name="first_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">По батькові</label>
+                            <input type="text" class="form-control" name="patronymic">
+                        </div>
+                    </div>
+
+                    <div id="company_fields" class="d-none">
+                        <div class="mb-3">
+                            <label class="form-label">Назва компанії</label>
+                            <input type="text" class="form-control" name="company_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">ЄДРПОУ</label>
+                            <input type="text" class="form-control" name="tax_number" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Телефон</label>
+                        <input type="tel" class="form-control" name="phone" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" name="email">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="saveCustomer">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for new address -->
+<div class="modal fade" id="newAddressModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Нова адреса</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newAddressForm">
+                    <input type="hidden" name="unit_id" id="address_unit_id">
+                    <div class="mb-3">
+                        <label class="form-label">Тип вулиці</label>
+                        <select class="form-select" name="street_type_id" required>
+                            <option value="">Виберіть тип вулиці...</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Вулиця</label>
+                        <select class="form-select" name="street_id" required>
+                            <option value="">Виберіть вулицю...</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Будинок</label>
+                        <input type="text" class="form-control" name="building_number" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Квартира/Офіс</label>
+                        <input type="text" class="form-control" name="unit_number">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Коментар</label>
+                        <textarea class="form-control" name="comment" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-primary" id="saveAddress">Зберегти</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const orderTypeInputs = document.querySelectorAll('input[name="order_type_id"]');
+    const tableSection = document.getElementById('table_section');
+    const deliverySection = document.getElementById('delivery_section');
+    const customerTypeInputs = document.querySelectorAll('input[name="customer_type"]');
+    const personFields = document.getElementById('person_fields');
+    const companyFields = document.getElementById('company_fields');
+    const hallSelect = document.getElementById('hall_id');
+    const tableSelect = document.getElementById('table_id');
+    const customerSelect = document.getElementById('customer_id');
+    const addressSelect = document.getElementById('address_id');
+
+    // Handle order type change
+    orderTypeInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            if (this.value === '1') { // Table order
+                tableSection.classList.remove('d-none');
+                deliverySection.classList.add('d-none');
+            } else { // Delivery
+                tableSection.classList.add('d-none');
+                deliverySection.classList.remove('d-none');
+            }
+        });
+    });
+
+    // Handle customer type change in modal
+    customerTypeInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            if (this.value === 'person') {
+                personFields.classList.remove('d-none');
+                companyFields.classList.add('d-none');
+            } else {
+                personFields.classList.add('d-none');
+                companyFields.classList.remove('d-none');
+            }
+        });
+    });
+
+    // Handle hall selection
+    hallSelect.addEventListener('change', function() {
+        const hallId = this.value;
+        if (hallId) {
+            fetch(`/api/halls/${hallId}/tables`)
+                .then(response => response.json())
+                .then(data => {
+                    tableSelect.innerHTML = '<option value="">Виберіть стіл...</option>';
+                    data.tables.forEach(table => {
+                        if (table.status.StatusName === 'Вільний') {
+                            const option = new Option(
+                                `${table.TableName} (${table.SeatsCount} місць)`,
+                                table.TableID
+                            );
+                            tableSelect.add(option);
+                        }
+                    });
+                    tableSelect.disabled = false;
+                });
+        } else {
+            tableSelect.innerHTML = '<option value="">Спочатку виберіть зал...</option>';
+            tableSelect.disabled = true;
+        }
+    });
+
+    // --- 1. Підвантаження типів вулиць при завантаженні сторінки ---
+    const streetTypeSelect = document.querySelector('select[name="street_type_id"]');
+    const streetSelect = document.querySelector('select[name="street_id"]');
+    fetch('/api/street_types')
+        .then(response => response.json())
+        .then(data => {
+            streetTypeSelect.innerHTML = '<option value="">Виберіть тип вулиці...</option>';
+            data.street_types.forEach(type => {
+                const option = new Option(type.TypeName, type.StreetTypeID);
+                streetTypeSelect.add(option);
+            });
+            // Після завантаження типів одразу підвантажити всі вулиці
+            updateStreetList();
+        });
+    // --- 2. Підвантаження всіх вулиць ---
+    function updateStreetList() {
+        fetch('/api/streets')
+            .then(response => response.json())
+            .then(data => {
+                streetSelect.innerHTML = '<option value="">Виберіть вулицю...</option>';
+                data.streets.forEach(street => {
+                    const option = new Option(`${street.type.TypeName} ${street.StreetName}`, street.StreetID);
+                    streetSelect.add(option);
+                });
+            });
+    }
+    streetTypeSelect.addEventListener('change', updateStreetList);
+    // --- 3. Підвантаження всіх адрес ---
+    function updateAddressList() {
+        fetch('/api/addresses')
+            .then(response => response.json())
+            .then(data => {
+                addressSelect.innerHTML = '<option value="">Виберіть адресу...</option>';
+                data.addresses.forEach(address => {
+                    const option = new Option(
+                        `${address.street.type.TypeName} ${address.street.StreetName}, ${address.building.BuildingNumber}${address.unit.UnitNumber ? ', ' + address.unit.UnitNumber : ''}`,
+                        address.AddressID
+                    );
+                    addressSelect.add(option);
+                });
+            });
+    }
+    orderTypeInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            if (this.value === '2') { // Доставка
+                updateAddressList();
+            }
+        });
+    });
+    if (document.querySelector('input[name="order_type_id"]:checked') && document.querySelector('input[name="order_type_id"]:checked').value === '2') {
+        updateAddressList();
+    }
+
+    // Handle new customer form submission
+    document.getElementById('saveCustomer').addEventListener('click', function() {
+        const form = document.getElementById('newCustomerForm');
+        const formData = new FormData(form);
+        
+        fetch('/api/customers/new', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const option = new Option(data.customer_name, data.customer_id);
+                customerSelect.add(option);
+                customerSelect.value = data.customer_id;
+                
+                const modal = bootstrap.Modal.getInstance(document.getElementById('newCustomerModal'));
+                modal.hide();
+                form.reset();
+            } else {
+                alert(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Помилка при збереженні клієнта');
+        });
+    });
+
+    // Handle new address form submission
+    document.getElementById('saveAddress').addEventListener('click', function() {
+        const form = document.getElementById('newAddressForm');
+        const formData = new FormData(form);
+        // Отримуємо unit_id через API
+        const streetId = form.querySelector('select[name="street_id"]').value;
+        const buildingNumber = form.querySelector('input[name="building_number"]').value;
+        const unitNumber = form.querySelector('input[name="unit_number"]').value;
+        if (!streetId || !buildingNumber) {
+            alert('Виберіть вулицю та введіть номер будинку');
+            return;
+        }
+        fetch(`/api/units/get_or_create?street_id=${streetId}&building_number=${encodeURIComponent(buildingNumber)}&unit_number=${encodeURIComponent(unitNumber)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    form.querySelector('#address_unit_id').value = data.unit_id;
+                    // Тепер відправляємо форму адреси
+                    const finalFormData = new FormData(form);
+                    fetch('/api/addresses/new', {
+                        method: 'POST',
+                        body: finalFormData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const option = new Option(data.address_text, data.address_id);
+                            addressSelect.add(option);
+                            addressSelect.value = data.address_id;
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('newAddressModal'));
+                            modal.hide();
+                            form.reset();
+                        } else {
+                            alert(data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Помилка при збереженні адреси');
+                    });
+                } else {
+                    alert(data.error);
+                }
+            });
+    });
+});
+</script>
+{% endblock %} 

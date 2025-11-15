@@ -1,0 +1,43 @@
+{% extends "admin/index.html" %}
+{% block title %}Редагування працівника - Кафе{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Редагування працівника</h2>
+    <form method="post">
+        <div class="mb-3">
+            <label>Прізвище</label>
+            <input type="text" name="last_name" class="form-control" value="{{ employee.person.LastName }}" required>
+        </div>
+        <div class="mb-3">
+            <label>Ім'я</label>
+            <input type="text" name="first_name" class="form-control" value="{{ employee.person.FirstName }}" required>
+        </div>
+        <div class="mb-3">
+            <label>По батькові</label>
+            <input type="text" name="patronymic" class="form-control" value="{{ employee.person.Patronymic }}">
+        </div>
+        <div class="mb-3">
+            <label>Логін</label>
+            <input type="text" name="username" class="form-control" value="{{ employee.UserName }}" required>
+        </div>
+        <div class="mb-3">
+            <label>Пароль (залиште порожнім, якщо не змінювати)</label>
+            <input type="password" name="password" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label>Роль</label>
+            <select name="role_id" class="form-control" required>
+                {% for role in roles %}
+                <option value="{{ role.RoleID }}" {% if employee.RoleID == role.RoleID %}selected{% endif %}>{{ role.RoleName }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label>Активний</label>
+            <input type="checkbox" name="is_active" {% if employee.IsActive %}checked{% endif %}>
+        </div>
+        <button type="submit" class="btn btn-primary">Зберегти</button>
+        <a href="{{ url_for('admin.employees') }}" class="btn btn-secondary">Скасувати</a>
+    </form>
+</div>
+{% endblock %} 
