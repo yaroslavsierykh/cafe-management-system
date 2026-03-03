@@ -23,6 +23,22 @@ Important: To log in to the app use the credentials
 Username: `admin`  
 Password: `admin123`
 
+## Database Design
+
+The system is built on a fully normalized relational database (3NF).
+
+Key characteristics:
+- Strict referential integrity with foreign keys
+- Separation of business entities and reference tables
+- Many-to-many relations implemented via junction tables
+- Historical price tracking in order items
+- Inventory management through dish-product relationships
+- Legal entity abstraction for suppliers
+- Normalized address structure (StreetType → Street → Building → Unit)
+
+## Database Schema
+<img width="1827" height="1524" alt="Untitled" src="https://github.com/user-attachments/assets/1f203a12-6748-43d4-b3d9-63ae4f4b5c5d" />
+
 ## Prerequisites
 - Python 3.8+ installed.
 - (Optional) Virtual environment `venv` in the project root, or create one with:
