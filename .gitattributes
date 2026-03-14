@@ -1,4 +1,2 @@
-# Ігнорувати всі HTML, CSS та JS файли у будь-яких папках
 **/*.html linguist-detectable=false
 **/*.css linguist-detectable=false
-
